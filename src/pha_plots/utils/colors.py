@@ -14,7 +14,7 @@ def normalize_colors(
     vmin: float | None = None,
     vmax: float | None = None,
     clip: bool = True,
-) -> np.ndarray:
+) -> np.ndarray | tuple[float, float, float, float]:
     """
     Map numeric values to RGBA colors using a matplotlib colormap.
 
@@ -29,8 +29,9 @@ def normalize_colors(
     :param clip: If True, clip values outside [vmin, vmax] to the boundary colors.
     :type clip: bool
 
-    :returns: RGBA color array with shape ``(..., 4)``.
-    :rtype: numpy.ndarray
+    :returns: RGBA colors. Returns an ndarray of shape ``(..., 4)`` for
+        array-like input, or a ``(r, g, b, a)`` tuple for scalar input.
+    :rtype: numpy.ndarray or tuple[float, float, float, float]
     """
     _norm = matplotlib.colors.Normalize(
         vmin=vmin,

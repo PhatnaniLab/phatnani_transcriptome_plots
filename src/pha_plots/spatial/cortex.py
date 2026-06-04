@@ -16,7 +16,7 @@ from pha_plots.utils import normalize_colors
 
 def _draw_cortex_slice(
     ax: Axes,
-    colors: np.ndarray,
+    colors: np.ndarray | list[np.ndarray],
     offset: list[float] | None = None,
     scale: float = 1.0,
     y_int: float = 0.06,

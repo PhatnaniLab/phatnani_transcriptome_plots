@@ -2,3 +2,5 @@
 
 from .colors import normalize_colors
 from .svg import get_svg_regions
+
+__all__ = ["normalize_colors", "get_svg_regions"]

@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Mapping
 
 import matplotlib.colors
 from matplotlib.axes import Axes
-from matplotlib.patches import PathPatch
+from matplotlib.patches import (
+    PathPatch,
+    Patch
+)
 
 from pha_plots.utils import get_svg_regions, normalize_colors
 
@@ -93,7 +96,9 @@ def draw_spinal_cord(
     vmax: float | None = None,
     scale: float = 1.0,
     offset: tuple[float, float] | None = None,
-) -> Axes:
+    patch_kwargs: dict[str, Any] | None = None,
+    nan_color: str = 'lightgray'
+) -> dict[str, Patch]:
     """
     Draw the spinal cord SVG on the given axis with optional per-region coloring.
 
@@ -117,8 +122,8 @@ def draw_spinal_cord(
         after scaling.
     :type offset: tuple[float, float] or None
 
-    :returns: The axis with all spinal cord patches added.
-    :rtype: matplotlib.axes.Axes
+    :returns: Dict of Matplotlib patch objects added to *ax*
+    :rtype: dict of matplotlib.patches.Polygon
     """
 
     if values is not None:
@@ -130,8 +135,17 @@ def draw_spinal_cord(
         colors = None
 
 
+    _patch_refs = {}
+    _patch_kwargs = {
+        'edgecolor': 'black',
+        'linewidth': 0.5
+    }
+
+    if patch_kwargs is not None:
+        _patch_kwargs.update(patch_kwargs)
+
     for region_id, paths in get_svg_regions(SPINAL_SVG).items():
-        color = colors.get(region_id, 'lightgray') if colors else 'lightgray'
+        color = colors.get(region_id, nan_color) if colors else nan_color
 
         for path in paths:
             if scale is not None:
@@ -141,7 +155,8 @@ def draw_spinal_cord(
                 path.vertices[:, 0] += offset[0]
                 path.vertices[:, 1] += offset[1]
 
-            patch = PathPatch(path, facecolor=color, edgecolor='black', linewidth=0.5)
-            ax.add_patch(patch)
+            _patch_refs[region_id] = ax.add_patch(
+                PathPatch(path, facecolor=color, **_patch_kwargs)
+            )
 
-    return ax
+    return _patch_refs

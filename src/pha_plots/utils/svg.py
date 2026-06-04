@@ -10,7 +10,10 @@ from matplotlib.path import Path
 from svgpath2mpl import parse_path
 
 
-def get_svg_regions(svg_string: str, flip_y: bool = True) -> dict[str, list[Path]]:
+def get_svg_regions(
+    svg_string: str,
+    flip_y: bool = True
+) -> dict[str, list[Path]]:
     """
     Load regions from an SVG where each <path> has a unique 'id' attribute.
 
@@ -33,21 +36,27 @@ def get_svg_regions(svg_string: str, flip_y: bool = True) -> dict[str, list[Path
 
     region_paths: defaultdict[str, list[Path]] = defaultdict(list)
 
-    vertices = []
     for path_el in paths:
-        region_id = path_el.attrib.get('id')
-        d = path_el.attrib.get('d')
+        region_id: str | None = path_el.attrib.get('id')
+        d: str | None = path_el.attrib.get('d')
 
         if region_id and d:
-            path = parse_path(d)
-            if flip_y:
-                path.vertices[:, 1] *= -1
-            region_paths[region_id].append(path)
-            vertices.append(path.vertices)
+            path: Path = parse_path(d)
 
-    vertices_arr = np.vstack(vertices)
-    min_vert, max_vert = vertices_arr.min(axis=0), vertices_arr.max(axis=0)
-    scale = 1 / (max_vert[0] - min_vert[0])
+            if flip_y:
+                path.vertices[:, 1] = path.vertices[:, 1] * -1
+
+            region_paths[region_id].append(path)
+
+    vertices_arr: np.ndarray = np.vstack([
+        path.vertices
+        for paths in region_paths.values()
+        for path in paths
+    ])
+
+    min_vert: np.ndarray = vertices_arr.min(axis=0)
+    max_vert: np.ndarray = vertices_arr.max(axis=0)
+    scale: float = 1 / (max_vert[0] - min_vert[0])
 
     for paths in region_paths.values():
         for path in paths:
