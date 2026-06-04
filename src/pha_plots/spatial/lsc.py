@@ -13,6 +13,7 @@ from matplotlib.patches import (
 
 from pha_plots.utils import get_svg_regions, normalize_colors
 
+# Embedded SVG template of a spinal cord cross-section with labeled anatomical regions.
 SPINAL_SVG = """
 <ns0:svg xmlns:ns0="http://www.w3.org/2000/svg" version="1.1" viewBox="0 0 154.18 118.84">
   <ns0:defs>
@@ -88,6 +89,24 @@ SPINAL_SVG = """
 </ns0:svg>
 """
 
+
+# Default annotation anchor points for each named region, expressed in the
+# normalized [0, 1] coordinate space produced by get_svg_regions.
+SPINAL_SIG_LOCS = {
+    'Dors_Edge': [(0.49, 0.65)],
+    'Lat_Edge': [(0.025, 0.3), (0.95, 0.3)],
+    'Vent_Edge': [(0.35, 0.017), (0.63, 0.017)],
+    'Dors_Med_White': [(0.49, 0.5)],
+    'Med_Lat_White': [(0.15, 0.33), (0.85, 0.33)],
+    'Vent_Lat_White': [(0.25, 0.13), (0.73, 0.13)],
+    'Vent_Med_White': [(0.49, 0.22)],
+    'Dors_Horn': [(0.29, 0.45), (0.69, 0.45)],
+    'Vent_Horn': [(0.29, 0.23), (0.69, 0.23)],
+    'Med_Grey':  [(0.37, 0.33)],
+    'Cent_Can':  [(0.49, 0.32)]
+}
+
+
 def draw_spinal_cord(
     ax: Axes,
     values: dict[str, Any] | None,
@@ -95,20 +114,27 @@ def draw_spinal_cord(
     vmin: float | None = None,
     vmax: float | None = None,
     scale: float = 1.0,
-    offset: tuple[float, float] | None = None,
+    offset: tuple[float, float] = (0., 0.),
     patch_kwargs: dict[str, Any] | None = None,
-    nan_color: str = 'lightgray'
-) -> dict[str, Patch]:
+    nan_color: str = 'lightgray',
+    is_sig: list[bool] | None = None,
+    sig_annotation_kwargs: dict[str, Any] | None = None,
+    sig_locations: dict[str, list[tuple[float, float]]] | None = None,
+    sig_annotation_char: str = '*'
+) -> dict[str, list[Patch]]:
     """
-    Draw the spinal cord SVG on the given axis with optional per-region coloring.
+    Draw a spinal cord cross-section on *ax*, coloring each anatomical region
+    from *values* via *cmap*.
 
-    Regions with no entry in *values* are rendered in light gray.
+    Regions absent from *values*, or when *values* is ``None``, are filled
+    with *nan_color*. Per-region significance markers can be added via
+    *is_sig* and *sig_locations*.
 
     :param ax: Matplotlib axis on which to draw the patches.
     :type ax: matplotlib.axes.Axes
-    :param values: Mapping of SVG region id to a numeric value (or array of values)
-        that is normalized and mapped to a color. Pass ``None`` to render all
-        regions in light gray.
+    :param values: Mapping of SVG region id to a numeric value that is
+        normalized and mapped to a color via *cmap*. Pass ``None`` to fill
+        all regions with *nan_color*.
     :type values: dict[str, Any] or None
     :param cmap: Colormap name or object used to map *values* to RGBA colors.
     :type cmap: str or matplotlib.colors.Colormap
@@ -116,14 +142,38 @@ def draw_spinal_cord(
     :type vmin: float or None
     :param vmax: Upper bound for color normalization. Defaults to the data maximum.
     :type vmax: float or None
-    :param scale: Uniform scale factor applied to all path vertices.
+    :param scale: Uniform scale factor applied to all path vertices before the
+        offset is added.
     :type scale: float
     :param offset: (x_offset, y_offset) translation applied to all path vertices
         after scaling.
-    :type offset: tuple[float, float] or None
+    :type offset: tuple[float, float]
+    :param patch_kwargs: Extra keyword arguments forwarded to
+        :class:`~matplotlib.patches.PathPatch` for every region patch.
+        Merged on top of the defaults ``{'edgecolor': 'black', 'linewidth': 0.5}``.
+    :type patch_kwargs: dict[str, Any] or None
+    :param nan_color: Fill color used for regions absent from *values*.
+    :type nan_color: str
+    :param is_sig: Mapping of region id to a boolean significance flag. Truthy
+        entries trigger an annotation at each location listed in *sig_locations*
+        for that region.
+    :type is_sig: dict[str, bool] or None
+    :param sig_annotation_kwargs: Extra keyword arguments forwarded to
+        :meth:`~matplotlib.axes.Axes.annotate` for significance markers.
+        Merged on top of the defaults
+        ``{'size': 6, 'ha': 'center', 'va': 'center'}``.
+    :type sig_annotation_kwargs: dict[str, Any] or None
+    :param sig_locations: Mapping of region id to a list of ``(x, y)`` anchor
+        points in the normalized ``[0, 1]`` SVG coordinate space where the
+        significance character is placed. Entries here override or extend
+        :data:`SPINAL_SIG_LOCS`.
+    :type sig_locations: dict[str, list[tuple[float, float]]] or None
+    :param sig_annotation_char: Character drawn at each significant region.
+    :type sig_annotation_char: str
 
-    :returns: Dict of Matplotlib patch objects added to *ax*
-    :rtype: dict of matplotlib.patches.Polygon
+    :returns: Mapping of region id to the list of
+        :class:`~matplotlib.patches.Patch` objects added for that region.
+    :rtype: dict[str, list[matplotlib.patches.Patch]]
     """
 
     if values is not None:
@@ -134,29 +184,62 @@ def draw_spinal_cord(
     else:
         colors = None
 
-
-    _patch_refs = {}
     _patch_kwargs = {
         'edgecolor': 'black',
         'linewidth': 0.5
     }
-
     if patch_kwargs is not None:
         _patch_kwargs.update(patch_kwargs)
 
-    for region_id, paths in get_svg_regions(SPINAL_SVG).items():
+    _sig_annotation_kwargs = {
+        'size': 6,
+        'ha': 'center',
+        'va': 'center'
+    }
+    if sig_annotation_kwargs is not None:
+        _sig_annotation_kwargs.update(sig_annotation_kwargs)
+
+    _sig_locations = SPINAL_SIG_LOCS.copy()
+    if sig_locations is not None:
+        _sig_locations.update(sig_locations)
+
+    svg_paths = get_svg_regions(SPINAL_SVG)
+    _patch_refs = {x: [] for x in svg_paths.keys()}
+
+
+    for region_id, paths in svg_paths.items():
         color = colors.get(region_id, nan_color) if colors else nan_color
 
         for path in paths:
-            if scale is not None:
-                path.vertices *= scale
+            # Vertices are in normalized [0, 1] space from get_svg_regions;
+            # scale/offset map them into plot coordinates.
+            path.vertices *= scale
+            path.vertices[:, 0] += offset[0]
+            path.vertices[:, 1] += offset[1]
 
-            if offset is not None:
-                path.vertices[:, 0] += offset[0]
-                path.vertices[:, 1] += offset[1]
-
-            _patch_refs[region_id] = ax.add_patch(
-                PathPatch(path, facecolor=color, **_patch_kwargs)
+            _patch_refs[region_id].append(
+                ax.add_patch(
+                    PathPatch(
+                        path,
+                        facecolor=color,
+                        **_patch_kwargs
+                    )
+                )
             )
+        
+    if is_sig is not None:
+        for region_id, sig_bool in is_sig.items():
+            if sig_bool and region_id in _sig_locations.keys():
+                for loc in _sig_locations[region_id]:
+                    # Apply the same scale/offset transform to the pre-normalized
+                    # annotation coordinates so markers stay aligned with patches.
+                    ax.annotate(
+                        sig_annotation_char,
+                        tuple(
+                            x * scale + offset[i]
+                            for i, x in enumerate(loc)
+                        ),
+                        **_sig_annotation_kwargs
+                    )
 
     return _patch_refs

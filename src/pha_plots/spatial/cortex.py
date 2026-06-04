@@ -16,7 +16,7 @@ from pha_plots.utils import normalize_colors
 
 def _draw_cortex_slice(
     ax: Axes,
-    colors: np.ndarray | list[np.ndarray],
+    colors: np.ndarray | list[np.ndarray] | None,
     offset: list[float] | None = None,
     scale: float = 1.0,
     y_int: float = 0.06,
@@ -27,6 +27,8 @@ def _draw_cortex_slice(
     slice_torque: float = 1.2,
     add_lines: bool = True,
     is_sig: list[Any] | None = None,
+    sig_annotation_kwargs: dict[str, Any] | None = None,
+    sig_annotation_char: str = '*'
 ) -> list[Polygon]:
     """
     Draw a stylized cortical slice as a stack of concentric quarter-circle arc polygons.
@@ -39,8 +41,9 @@ def _draw_cortex_slice(
     :param ax: Matplotlib axis on which to draw the patches.
     :type ax: matplotlib.axes.Axes
     :param colors: Fill color for each layer, ordered from outermost to innermost.
-        Accepts any color specification understood by Matplotlib.
-    :type colors: numpy.ndarray
+        Accepts any per-layer color sequence understood by Matplotlib. Pass ``None``
+        to draw all layers transparent (facecolor ``'None'``).
+    :type colors: list, numpy.ndarray, or None
     :param offset: (x, y) translation applied to every polygon vertex after scaling.
         Defaults to [0, 0].
     :type offset: list or None
@@ -55,25 +58,31 @@ def _draw_cortex_slice(
         Larger values make the right edge steeper.
     :type side_slope: float
     :param layer_widths: Relative thickness of each cortical layer, from outermost to
-        innermost. These are converted internally to fractional arc radii.
+        innermost. Converted internally to fractional arc radii.
     :type layer_widths: list of float
-    :param layer_torque: Per-layer x-scale multiplier applied before ``slice_torque``.
+    :param layer_torque: Per-layer x-scale multiplier applied before *slice_torque*.
         Values > 1 compress the arc horizontally, producing the curved appearance of
         deeper layers.
     :type layer_torque: list of float
     :param slice_torque: Global x-scale multiplier applied to every arc in addition to
-        the per-layer ``layer_torque``.
+        the per-layer *layer_torque*.
     :type slice_torque: float
-    :param add_lines: If True, draw a thin black boundary line along the outer edge of
-        each layer arc.
+    :param add_lines: If ``True``, draw a thin black boundary line along the outer
+        edge of each layer arc.
     :type add_lines: bool
-    :param is_sig: Per-layer significance flag. Truthy values cause an asterisk
-        annotation to be placed at the left edge of that layer. Defaults to all None
-        (no annotations).
+    :param is_sig: Per-layer significance flag. Truthy entries place *sig_annotation_char*
+        0.1 units to the left of the slice, vertically centred within that layer.
+        Defaults to all ``None`` (no annotations).
     :type is_sig: list or None
+    :param sig_annotation_kwargs: Extra keyword arguments forwarded to
+        :meth:`~matplotlib.axes.Axes.annotate` for significance markers. Merged on
+        top of the defaults ``{'size': 6, 'ha': 'center', 'va': 'center'}``.
+    :type sig_annotation_kwargs: dict[str, Any] or None
+    :param sig_annotation_char: Character drawn at each significant layer.
+    :type sig_annotation_char: str
 
-    :returns: List of Matplotlib patch objects added to *ax* (border patch first,
-        then one patch per layer).
+    :returns: List of Matplotlib patch objects added to *ax* (outer border first,
+        then one patch per layer from outermost to innermost).
     :rtype: list of matplotlib.patches.Polygon
     """
     if offset is None:
@@ -81,6 +90,17 @@ def _draw_cortex_slice(
 
     if is_sig is None:
         is_sig = [None] * len(layer_widths)
+
+    if colors is None:
+        colors = ['None'] * len(layer_widths)
+
+    _sig_annotation_kwargs = {
+        'size': 6,
+        'ha': 'center',
+        'va': 'center'
+    }
+    if sig_annotation_kwargs is not None:
+        _sig_annotation_kwargs.update(sig_annotation_kwargs)
 
     # Prepend 0 so cumsum gives the outer radius of each layer (outermost = sum of all widths).
     layer_widths = np.concatenate(([0], np.asanyarray(layer_widths)))
@@ -154,20 +174,18 @@ def _draw_cortex_slice(
         if sig:
             # Place the asterisk vertically centered within this layer.
             try:
-                yloc = (layer_heights[layer] + layer_heights[layer + 1]) / 2
+                yloc = (layer_heights[layer] + layer_heights[layer + 1]) / 2 - (y_int / 2)
             except IndexError:
                 # Innermost layer has no layer[layer+1]; use y_int as the inner bound.
-                yloc = (layer_heights[layer] + y_int) / 2
+                yloc = (layer_heights[layer] + y_int) / 2 - (y_int / 2)
 
             ax.annotate(
-                "*",
+                sig_annotation_char,
                 (
-                    offset[0] - (0.1 * scale),
-                    offset[1] + ((yloc - (y_int / 2)) * scale)
+                    offset[0] - (0.1),
+                    offset[1] + (yloc * scale)
                 ),
-                size=6,
-                ha='center',
-                va='center'
+                **_sig_annotation_kwargs
             )
 
     return _patch_refs
@@ -175,26 +193,32 @@ def _draw_cortex_slice(
 
 def draw_frontal_cortex(
     ax: Axes,
-    values: ArrayLike,
-    cmap: str | matplotlib.colors.Colormap,
+    values: ArrayLike | None,
+    cmap: str | matplotlib.colors.Colormap | None,
     vmin: float | None = None,
     vmax: float | None = None,
     offset: list[float] | None = None,
     scale: float = 1.0,
     add_lines: bool = True,
     is_sig: list[Any] | None = None,
+    sig_annotation_kwargs: dict[str, Any] | None = None,
+    sig_annotation_char: str = '*',
+    nan_color: str = 'lightgray',
 ) -> list[Polygon]:
     """
     Draw a stylized frontal cortex slice with per-layer colors derived from *values*.
 
-    Delegates to :func:`_draw_cortex_slice` using default frontal cortex geometry.
+    Delegates to :func:`_draw_cortex_slice` using the default frontal cortex geometry
+    (7 layers: I–VI with layer IV split).
 
     :param ax: Matplotlib axis on which to draw the patches.
     :type ax: matplotlib.axes.Axes
-    :param values: Per-layer numeric values that are mapped to colors via *cmap*.
-    :type values: ArrayLike
+    :param values: Per-layer numeric values mapped to colors via *cmap*. Pass ``None``
+        to render all layers with *nan_color*.
+    :type values: ArrayLike or None
     :param cmap: Colormap name or object used to map *values* to RGBA colors.
-    :type cmap: str or matplotlib.colors.Colormap
+        Pass ``None`` when *values* is also ``None``.
+    :type cmap: str, matplotlib.colors.Colormap, or None
     :param vmin: Lower bound for color normalization. Defaults to the data minimum.
     :type vmin: float or None
     :param vmax: Upper bound for color normalization. Defaults to the data maximum.
@@ -204,47 +228,64 @@ def draw_frontal_cortex(
     :type offset: list or None
     :param scale: Uniform scale factor applied to all coordinates.
     :type scale: float
-    :param add_lines: If True, draw a thin black boundary line along each layer arc.
+    :param add_lines: If ``True``, draw a thin black boundary line along each layer arc.
     :type add_lines: bool
-    :param is_sig: Per-layer significance flag. Truthy values place an asterisk
-        annotation at the left edge of that layer.
+    :param is_sig: Per-layer significance flag. Truthy values place *sig_annotation_char*
+        to the left of that layer.
     :type is_sig: list or None
+    :param sig_annotation_kwargs: Extra keyword arguments forwarded to
+        :meth:`~matplotlib.axes.Axes.annotate` for significance markers. Merged on
+        top of the defaults ``{'size': 6, 'ha': 'center', 'va': 'center'}``.
+    :type sig_annotation_kwargs: dict[str, Any] or None
+    :param sig_annotation_char: Character drawn at each significant layer.
+    :type sig_annotation_char: str
+    :param nan_color: Fill color used for layers whose value is ``None`` or ``NaN``.
+    :type nan_color: str
 
     :returns: List of Matplotlib patch objects added to *ax*.
     :rtype: list of matplotlib.patches.Polygon
     """
+
     return _draw_cortex_slice(
         ax,
-        normalize_colors(values, cmap, vmin, vmax),
+        normalize_colors(values, cmap, vmin, vmax, nan_color=nan_color),
         offset,
         scale=scale,
         add_lines=add_lines,
-        is_sig=is_sig
+        is_sig=is_sig,
+        sig_annotation_char=sig_annotation_char,
+        sig_annotation_kwargs=sig_annotation_kwargs
     )
 
 
 def draw_motor_cortex(
     ax: Axes,
-    values: ArrayLike,
-    cmap: str | matplotlib.colors.Colormap,
+    values: ArrayLike | None,
+    cmap: str | matplotlib.colors.Colormap | None,
     vmin: float | None = None,
     vmax: float | None = None,
     offset: list[float] | None = None,
     scale: float = 1.0,
     add_lines: bool = True,
     is_sig: list[Any] | None = None,
+    sig_annotation_kwargs: dict[str, Any] | None = None,
+    sig_annotation_char: str = '*',
+    nan_color: str = 'lightgray'
 ) -> list[Polygon]:
     """
     Draw a stylized motor cortex slice with per-layer colors derived from *values*.
 
-    Delegates to :func:`_draw_cortex_slice` using default motor cortex geometry.
+    Delegates to :func:`_draw_cortex_slice` using the default motor cortex geometry
+    (6 layers: the agranular motor cortex lacks layer IV, giving layers I, II, III, V, VI).
 
     :param ax: Matplotlib axis on which to draw the patches.
     :type ax: matplotlib.axes.Axes
-    :param values: Per-layer numeric values that are mapped to colors via *cmap*.
-    :type values: ArrayLike
+    :param values: Per-layer numeric values mapped to colors via *cmap*. Pass ``None``
+        to render all layers with *nan_color*.
+    :type values: ArrayLike or None
     :param cmap: Colormap name or object used to map *values* to RGBA colors.
-    :type cmap: str or matplotlib.colors.Colormap
+        Pass ``None`` when *values* is also ``None``.
+    :type cmap: str, matplotlib.colors.Colormap, or None
     :param vmin: Lower bound for color normalization. Defaults to the data minimum.
     :type vmin: float or None
     :param vmax: Upper bound for color normalization. Defaults to the data maximum.
@@ -254,20 +295,33 @@ def draw_motor_cortex(
     :type offset: list or None
     :param scale: Uniform scale factor applied to all coordinates.
     :type scale: float
-    :param add_lines: If True, draw a thin black boundary line along each layer arc.
+    :param add_lines: If ``True``, draw a thin black boundary line along each layer arc.
     :type add_lines: bool
-    :param is_sig: Per-layer significance flag. Truthy values place an asterisk
-        annotation at the left edge of that layer.
+    :param is_sig: Per-layer significance flag. Truthy values place *sig_annotation_char*
+        to the left of that layer.
     :type is_sig: list or None
+    :param sig_annotation_kwargs: Extra keyword arguments forwarded to
+        :meth:`~matplotlib.axes.Axes.annotate` for significance markers. Merged on
+        top of the defaults ``{'size': 6, 'ha': 'center', 'va': 'center'}``.
+    :type sig_annotation_kwargs: dict[str, Any] or None
+    :param sig_annotation_char: Character drawn at each significant layer.
+    :type sig_annotation_char: str
+    :param nan_color: Fill color used for layers whose value is ``None`` or ``NaN``.
+    :type nan_color: str
 
     :returns: List of Matplotlib patch objects added to *ax*.
     :rtype: list of matplotlib.patches.Polygon
     """
+
     return _draw_cortex_slice(
         ax,
-        normalize_colors(values, cmap, vmin, vmax),
+        normalize_colors(values, cmap, vmin, vmax, nan_color=nan_color),
         offset,
         scale=scale,
         add_lines=add_lines,
-        is_sig=is_sig
+        is_sig=is_sig,
+        layer_widths=[1, 2, 4, 5, 3, 3],
+        layer_torque=[1, 1.05, 1.1, 1.25, 1.5, 1.9],
+        sig_annotation_char=sig_annotation_char,
+        sig_annotation_kwargs=sig_annotation_kwargs
     )
