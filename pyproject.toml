@@ -1,0 +1,92 @@
+[build-system]
+requires = ["setuptools>=68", "setuptools-scm>=8"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pha-plots"
+dynamic = ["version"]
+description = "Transcriptome visualisation utilities for PhatnaniLab"
+readme = "README.md"
+license = { file = "LICENSE" }
+authors = [{ name = "PhatnaniLab", email = "phatnanilab@example.com" }]
+requires-python = ">=3.9"
+keywords = ["transcriptomics", "bioinformatics", "rna-seq", "visualization"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Bio-Informatics",
+    "Topic :: Scientific/Engineering :: Visualization",
+]
+dependencies = [
+    "matplotlib",
+    "svgpath2mpl",
+    "pandas",
+    "scipy",
+    "numpy",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.4",
+    "pytest-cov>=4.1",
+    "ruff>=0.4",
+    "mypy>=1.8",
+    "pandas-stubs>=2.0",
+]
+docs = [
+    "sphinx>=7",
+    "sphinx-rtd-theme>=2",
+    "sphinxcontrib-napoleon>=0.7",
+]
+
+[project.urls]
+Homepage = "https://github.com/PhatnaniLab/phatnani_transcriptome_plots"
+Repository = "https://github.com/PhatnaniLab/phatnani_transcriptome_plots"
+Issues = "https://github.com/PhatnaniLab/phatnani_transcriptome_plots/issues"
+Changelog = "https://github.com/PhatnaniLab/phatnani_transcriptome_plots/blob/main/CHANGELOG.md"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools_scm]
+version_scheme = "post-release"
+local_scheme = "dirty-tag"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "--cov=pha_plots --cov-report=term-missing --cov-report=xml"
+
+[tool.coverage.run]
+source = ["pha_plots"]
+branch = true
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "if TYPE_CHECKING:",
+    "raise NotImplementedError",
+]
+
+[tool.ruff]
+src = ["src"]
+line-length = 99
+target-version = "py39"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "ANN", "D"]
+ignore = ["D203", "D213"]
+
+[tool.ruff.lint.pydocstyle]
+convention = "pep257"
+
+[tool.mypy]
+python_version = "3.9"
+strict = true
+ignore_missing_imports = true
