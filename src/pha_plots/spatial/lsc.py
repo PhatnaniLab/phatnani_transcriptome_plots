@@ -1,3 +1,11 @@
+"""Spinal cord drawing function using an embedded SVG template."""
+
+from __future__ import annotations
+
+from typing import Any
+
+import matplotlib.colors
+from matplotlib.axes import Axes
 from matplotlib.patches import PathPatch
 
 from pha_plots.utils import get_svg_regions, normalize_colors
@@ -51,7 +59,7 @@ SPINAL_SVG = """
       }
     </ns0:style>
   </ns0:defs>
-  
+
   <ns0:g>
     <ns0:g id="Layer_1">
       <ns0:g>
@@ -78,23 +86,39 @@ SPINAL_SVG = """
 """
 
 def draw_spinal_cord(
-    ax,
-    values,
-    cmap,
-    vmin=None,
-    vmax=None,
-    scale=1.0,
-    offset=None
-):
+    ax: Axes,
+    values: dict[str, Any] | None,
+    cmap: str | matplotlib.colors.Colormap,
+    vmin: float | None = None,
+    vmax: float | None = None,
+    scale: float = 1.0,
+    offset: tuple[float, float] | None = None,
+) -> Axes:
     """
-    Draw the spinal cord SVG on the given axis with optional coloring per region.
+    Draw the spinal cord SVG on the given axis with optional per-region coloring.
 
-    Parameters:
-    - ax: matplotlib axis
-    - region_colors: dict mapping region_id -> color
-    - scale: float, scale factor
-    - svg_file: path to SVG
-    - offset: tuple (x_offset, y_offset), applied to all shapes
+    Regions with no entry in *values* are rendered in light gray.
+
+    :param ax: Matplotlib axis on which to draw the patches.
+    :type ax: matplotlib.axes.Axes
+    :param values: Mapping of SVG region id to a numeric value (or array of values)
+        that is normalized and mapped to a color. Pass ``None`` to render all
+        regions in light gray.
+    :type values: dict[str, Any] or None
+    :param cmap: Colormap name or object used to map *values* to RGBA colors.
+    :type cmap: str or matplotlib.colors.Colormap
+    :param vmin: Lower bound for color normalization. Defaults to the data minimum.
+    :type vmin: float or None
+    :param vmax: Upper bound for color normalization. Defaults to the data maximum.
+    :type vmax: float or None
+    :param scale: Uniform scale factor applied to all path vertices.
+    :type scale: float
+    :param offset: (x_offset, y_offset) translation applied to all path vertices
+        after scaling.
+    :type offset: tuple[float, float] or None
+
+    :returns: The axis with all spinal cord patches added.
+    :rtype: matplotlib.axes.Axes
     """
 
     if values is not None:

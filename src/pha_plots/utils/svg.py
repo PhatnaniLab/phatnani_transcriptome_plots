@@ -1,23 +1,37 @@
-import numpy as np
-from xml.etree import ElementTree as ET
-from svgpath2mpl import parse_path
+"""SVG region parsing utilities for extracting matplotlib Path objects by region ID."""
+
+from __future__ import annotations
+
 from collections import defaultdict
+from xml.etree import ElementTree as ET
+
+import numpy as np
+from matplotlib.path import Path
+from svgpath2mpl import parse_path
 
 
-def get_svg_regions(svg_string, flip_y=True):
+def get_svg_regions(svg_string: str, flip_y: bool = True) -> dict[str, list[Path]]:
     """
     Load regions from an SVG where each <path> has a unique 'id' attribute.
-    Handles duplicate ids (e.g., regions on left and right).
 
-    Returns:
-        dict: Mapping of region_id -> list of parsed paths (matplotlib Path objects)
+    Handles duplicate ids (e.g., regions on left and right). All paths are
+    normalized so that the x-axis spans [0, 1] after parsing.
+
+    :param svg_string: Raw SVG XML string to parse.
+    :type svg_string: str
+    :param flip_y: If True, negate the y-coordinates of every path vertex to
+        convert from SVG (top-down) to matplotlib (bottom-up) coordinates.
+    :type flip_y: bool
+
+    :returns: Mapping of region_id to a list of parsed matplotlib Path objects.
+    :rtype: dict[str, list[matplotlib.path.Path]]
     """
     root = ET.fromstring(svg_string)
     ns = {'svg': 'http://www.w3.org/2000/svg'}
 
     paths = root.findall(".//svg:path", ns)
 
-    region_paths = defaultdict(list)
+    region_paths: defaultdict[str, list[Path]] = defaultdict(list)
 
     vertices = []
     for path_el in paths:
@@ -31,8 +45,8 @@ def get_svg_regions(svg_string, flip_y=True):
             region_paths[region_id].append(path)
             vertices.append(path.vertices)
 
-    vertices = np.vstack(vertices)
-    min_vert, max_vert = vertices.min(axis=0), vertices.max(axis=0)
+    vertices_arr = np.vstack(vertices)
+    min_vert, max_vert = vertices_arr.min(axis=0), vertices_arr.max(axis=0)
     scale = 1 / (max_vert[0] - min_vert[0])
 
     for paths in region_paths.values():

@@ -1,23 +1,33 @@
+"""Cortical slice drawing functions for frontal and motor cortex regions."""
+
+from __future__ import annotations
+
+from collections.abc import Callable
+from typing import Any
+
+import matplotlib.colors
 import numpy as np
+from matplotlib.axes import Axes
 from matplotlib.patches import Polygon
+from numpy.typing import ArrayLike
 
 from pha_plots.utils import normalize_colors
 
 
 def _draw_cortex_slice(
-    ax,
-    colors,
-    offset=None,
-    scale=1.0,
-    y_int = 0.06,
-    x_int = 0.3,
-    side_slope = 1.6,
-    layer_widths = [1, 2, 4, 1, 4, 3, 3],
-    layer_torque = [1, 1.05, 1.1, 1.25, 1.25, 1.5, 1.9],
-    slice_torque = 1.2,
-    add_lines=True,
-    is_sig=None
-):
+    ax: Axes,
+    colors: np.ndarray,
+    offset: list[float] | None = None,
+    scale: float = 1.0,
+    y_int: float = 0.06,
+    x_int: float = 0.3,
+    side_slope: float = 1.6,
+    layer_widths: list[float] = [1, 2, 4, 1, 4, 3, 3],
+    layer_torque: list[float] = [1, 1.05, 1.1, 1.25, 1.25, 1.5, 1.9],
+    slice_torque: float = 1.2,
+    add_lines: bool = True,
+    is_sig: list[Any] | None = None,
+) -> list[Polygon]:
     """
     Draw a stylized cortical slice as a stack of concentric quarter-circle arc polygons.
 
@@ -30,7 +40,7 @@ def _draw_cortex_slice(
     :type ax: matplotlib.axes.Axes
     :param colors: Fill color for each layer, ordered from outermost to innermost.
         Accepts any color specification understood by Matplotlib.
-    :type colors: list
+    :type colors: numpy.ndarray
     :param offset: (x, y) translation applied to every polygon vertex after scaling.
         Defaults to [0, 0].
     :type offset: list or None
@@ -78,11 +88,15 @@ def _draw_cortex_slice(
     layer_heights = (np.sum(layer_widths) - np.cumsum(layer_widths[:-1])) / np.sum(layer_widths)
     layer_heights = (layer_heights + y_int) * (1 - y_int)
 
-    def _sideline(x):
+    def _sideline(x: float) -> float:
         # Linear right-edge clip: arcs are kept only where y >= this line.
         return side_slope * (x - x_int)
 
-    def curve(arclen, side_func=_sideline, xscale=1.0):
+    def curve(
+        arclen: float,
+        side_func: Callable[[float], float] = _sideline,
+        xscale: float = 1.0,
+    ) -> np.ndarray:
         # Combined x-compression: per-layer torque * global torque.
         xscale = xscale * slice_torque
 
@@ -160,17 +174,45 @@ def _draw_cortex_slice(
 
 
 def draw_frontal_cortex(
-    ax,
-    values,
-    cmap,
-    vmin=None,
-    vmax=None,
-    offset=None,
-    scale=1.0,
-    add_lines=True,
-    is_sig=None
-):
-       
+    ax: Axes,
+    values: ArrayLike,
+    cmap: str | matplotlib.colors.Colormap,
+    vmin: float | None = None,
+    vmax: float | None = None,
+    offset: list[float] | None = None,
+    scale: float = 1.0,
+    add_lines: bool = True,
+    is_sig: list[Any] | None = None,
+) -> list[Polygon]:
+    """
+    Draw a stylized frontal cortex slice with per-layer colors derived from *values*.
+
+    Delegates to :func:`_draw_cortex_slice` using default frontal cortex geometry.
+
+    :param ax: Matplotlib axis on which to draw the patches.
+    :type ax: matplotlib.axes.Axes
+    :param values: Per-layer numeric values that are mapped to colors via *cmap*.
+    :type values: ArrayLike
+    :param cmap: Colormap name or object used to map *values* to RGBA colors.
+    :type cmap: str or matplotlib.colors.Colormap
+    :param vmin: Lower bound for color normalization. Defaults to the data minimum.
+    :type vmin: float or None
+    :param vmax: Upper bound for color normalization. Defaults to the data maximum.
+    :type vmax: float or None
+    :param offset: (x, y) translation applied to every polygon vertex after scaling.
+        Defaults to [0, 0].
+    :type offset: list or None
+    :param scale: Uniform scale factor applied to all coordinates.
+    :type scale: float
+    :param add_lines: If True, draw a thin black boundary line along each layer arc.
+    :type add_lines: bool
+    :param is_sig: Per-layer significance flag. Truthy values place an asterisk
+        annotation at the left edge of that layer.
+    :type is_sig: list or None
+
+    :returns: List of Matplotlib patch objects added to *ax*.
+    :rtype: list of matplotlib.patches.Polygon
+    """
     return _draw_cortex_slice(
         ax,
         normalize_colors(values, cmap, vmin, vmax),
@@ -182,17 +224,45 @@ def draw_frontal_cortex(
 
 
 def draw_motor_cortex(
-    ax,
-    values,
-    cmap,
-    vmin=None,
-    vmax=None,
-    offset=None,
-    scale=1.0,
-    add_lines=True,
-    is_sig=None
-):
-    
+    ax: Axes,
+    values: ArrayLike,
+    cmap: str | matplotlib.colors.Colormap,
+    vmin: float | None = None,
+    vmax: float | None = None,
+    offset: list[float] | None = None,
+    scale: float = 1.0,
+    add_lines: bool = True,
+    is_sig: list[Any] | None = None,
+) -> list[Polygon]:
+    """
+    Draw a stylized motor cortex slice with per-layer colors derived from *values*.
+
+    Delegates to :func:`_draw_cortex_slice` using default motor cortex geometry.
+
+    :param ax: Matplotlib axis on which to draw the patches.
+    :type ax: matplotlib.axes.Axes
+    :param values: Per-layer numeric values that are mapped to colors via *cmap*.
+    :type values: ArrayLike
+    :param cmap: Colormap name or object used to map *values* to RGBA colors.
+    :type cmap: str or matplotlib.colors.Colormap
+    :param vmin: Lower bound for color normalization. Defaults to the data minimum.
+    :type vmin: float or None
+    :param vmax: Upper bound for color normalization. Defaults to the data maximum.
+    :type vmax: float or None
+    :param offset: (x, y) translation applied to every polygon vertex after scaling.
+        Defaults to [0, 0].
+    :type offset: list or None
+    :param scale: Uniform scale factor applied to all coordinates.
+    :type scale: float
+    :param add_lines: If True, draw a thin black boundary line along each layer arc.
+    :type add_lines: bool
+    :param is_sig: Per-layer significance flag. Truthy values place an asterisk
+        annotation at the left edge of that layer.
+    :type is_sig: list or None
+
+    :returns: List of Matplotlib patch objects added to *ax*.
+    :rtype: list of matplotlib.patches.Polygon
+    """
     return _draw_cortex_slice(
         ax,
         normalize_colors(values, cmap, vmin, vmax),
