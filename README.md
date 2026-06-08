@@ -25,8 +25,10 @@ pip install "pha-plots[dev]"
 
 `draw_frontal_cortex` and `draw_motor_cortex` each accept a list of per-layer
 numeric values (outermost layer first), a colormap, and optional normalization
-bounds.  Frontal cortex uses 7 layers (I–VI with layer IV split); motor cortex
-uses 6 (agranular — no layer IV).
+bounds.  Frontal cortex uses 7 layers (I–VI and white matter); motor cortex
+uses 6 (no layer IV).
+
+![Summary of Frontal Cortex](https://github.com/PhatnaniLab/phatnani_transcriptome_plots/blob/main/img/CORTEX.png "Frontal Cortex AAR Plot")
 
 ```python
 import matplotlib.pyplot as plt
@@ -71,7 +73,7 @@ draw_frontal_cortex(
 values.  Any region absent from the dictionary is filled with `nan_color`
 (default `'lightgray'`).
 
-Recognized region IDs (matching the embedded SVG):
+Recognized region IDs:
 
 | ID | Anatomy |
 |----|---------|
@@ -86,6 +88,8 @@ Recognized region IDs (matching the embedded SVG):
 | `Vent_Horn` | Ventral horn (bilateral) |
 | `Med_Grey` | Medial grey matter |
 | `Cent_Can` | Central canal |
+
+![Summary of Spinal Cord](https://github.com/PhatnaniLab/phatnani_transcriptome_plots/blob/main/img/SPINAL_CORD.png "Spinal Cord AAR Plot")
 
 ```python
 from pha_plots import draw_spinal_cord
