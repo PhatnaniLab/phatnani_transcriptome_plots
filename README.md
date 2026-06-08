@@ -207,17 +207,6 @@ pip install -e ".[dev]"
 pytest
 ```
 
-## Releasing
-
-1. Create and push a git tag matching `v*` (e.g. `v0.1.0`).
-2. Draft a GitHub Release from that tag.
-3. The [publish workflow](.github/workflows/publish.yml) builds the
-   distribution, pushes to TestPyPI, then promotes to PyPI automatically.
-
-> **Trusted publishing** — configure an OIDC publisher for `pha-plots` on
-> PyPI/TestPyPI (no API tokens needed). See the
-> [PyPA guide](https://docs.pypi.org/trusted-publishers/).
-
 ## License
 
 MIT — see [LICENSE](LICENSE).
