@@ -179,6 +179,10 @@ draw_spinal_cord(
     cmap=CMAP, vmin=VMIN, vmax=VMAX,
 )
 
+axes[0].set_title("Frontal Cortex", fontsize=8)
+axes[1].set_title("Motor Cortex", fontsize=8)
+axes[2].set_title("Spinal Cord", fontsize=8)
+
 for ax in axes:
     ax.set_aspect("equal")
     ax.autoscale()
@@ -197,6 +201,8 @@ draw_colorbar(
 plt.tight_layout()
 plt.savefig("expression_figure.pdf", bbox_inches="tight")
 ```
+
+![Summary of All Plots](https://github.com/PhatnaniLab/phatnani_transcriptome_plots/blob/main/img/ALL_PLOTS.png "All Tissue AAR Plots")
 
 ## Development setup
 
