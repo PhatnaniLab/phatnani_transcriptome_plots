@@ -11,11 +11,16 @@ __all__ = [
     "__version__",
     "draw_frontal_cortex",
     "draw_motor_cortex",
-    "draw_spinal_cord"
+    "draw_spinal_cord",
+    "draw_colorbar"
 ]
 
 from .spatial import (
     draw_frontal_cortex,
     draw_motor_cortex,
     draw_spinal_cord
+)
+
+from .utils import (
+    draw_colorbar
 )

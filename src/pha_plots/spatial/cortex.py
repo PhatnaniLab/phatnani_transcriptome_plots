@@ -209,7 +209,7 @@ def draw_frontal_cortex(
     Draw a stylized frontal cortex slice with per-layer colors derived from *values*.
 
     Delegates to :func:`_draw_cortex_slice` using the default frontal cortex geometry
-    (7 layers: I–VI with layer IV split).
+    (7 layers).
 
     :param ax: Matplotlib axis on which to draw the patches.
     :type ax: matplotlib.axes.Axes
@@ -276,7 +276,7 @@ def draw_motor_cortex(
     Draw a stylized motor cortex slice with per-layer colors derived from *values*.
 
     Delegates to :func:`_draw_cortex_slice` using the default motor cortex geometry
-    (6 layers: the agranular motor cortex lacks layer IV, giving layers I, II, III, V, VI).
+    (6 layers).
 
     :param ax: Matplotlib axis on which to draw the patches.
     :type ax: matplotlib.axes.Axes
