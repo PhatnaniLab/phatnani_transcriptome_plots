@@ -1,4 +1,4 @@
-"""Colorbar drawing utilities for placing colorbars at data coordinates."""
+"""Colorbar drawing utilities."""
 
 from typing import Any
 
@@ -10,27 +10,27 @@ from matplotlib.colorbar import Colorbar
 
 def draw_colorbar(
     ax: Axes,
-    xycoords: tuple[float, float, float, float],
+    xy: tuple[float, float, float, float],
     cmap: str | matplotlib.colors.Colormap,
     vmin: float,
     vmax: float,
     orientation: str = 'vertical',
     label: str = '',
+    xycoords: str = 'data',
     **kwargs: Any,
 ) -> tuple[Colorbar, Axes]:
     """
-    Draw a colorbar as an inset axis positioned at *xycoords* in data coordinates.
+    Draw a colorbar as an inset axis positioned using *xycoords*.
 
-    Creates an inset axis inside *ax* at the rectangle defined by *xycoords*, then
+    Creates an inset axis inside *ax* at the rectangle defined by *xy*, then
     renders a colorbar there using a :class:`~matplotlib.cm.ScalarMappable` built
-    from *cmap*, *vmin*, and *vmax*. The inset is placed in the same coordinate
-    space as the data, so its position scales and pans with the axes.
+    from *cmap*, *vmin*, and *vmax*.
 
     :param ax: Parent axis on which the colorbar inset is placed.
     :type ax: matplotlib.axes.Axes
-    :param xycoords: Bounding box ``(x0, y0, width, height)`` of the colorbar in
-        the data coordinate system of *ax*. ``(x0, y0)`` is the bottom-left corner.
-    :type xycoords: tuple[float, float, float, float]
+    :param xy: Bounding box ``(x0, y0, width, height)`` of the colorbar.
+        ``(x0, y0)`` is the bottom-left corner.
+    :type xy: tuple[float, float, float, float]
     :param cmap: Colormap name or object used to build the colorbar gradient.
     :type cmap: str or matplotlib.colors.Colormap
     :param vmin: Lower bound of the colorbar data range.
@@ -41,6 +41,10 @@ def draw_colorbar(
     :type orientation: str
     :param label: Text label placed along the colorbar axis.
     :type label: str
+    :param xycoords: Coordinate system for *xy*. ``'data'`` (default) places the
+        colorbar in data coordinates; ``'axes fraction'`` places it in axes
+        fraction coordinates (0–1 relative to the axes bounding box).
+    :type xycoords: str
     :param kwargs: Additional keyword arguments forwarded to
         :meth:`~matplotlib.figure.Figure.colorbar`, e.g. ``ticks``,
         ``ticklocation``, ``format``, ``extend``.
@@ -50,8 +54,13 @@ def draw_colorbar(
         :class:`~matplotlib.axes.Axes` inset on which it was drawn.
     :rtype: tuple[matplotlib.colorbar.Colorbar, matplotlib.axes.Axes]
     """
-    # Create an inset axis at the requested data-coordinate rectangle.
-    cax = ax.inset_axes(list(xycoords), transform=ax.transData)
+    _transforms = {
+        'data': ax.transData,
+        'axes fraction': ax.transAxes,
+    }
+    if xycoords not in _transforms:
+        raise ValueError(f"xycoords must be 'data' or 'axes fraction', got {xycoords!r}")
+    cax = ax.inset_axes(list(xy), transform=_transforms[xycoords])
 
     norm = matplotlib.colors.Normalize(vmin=vmin, vmax=vmax)
     sm = ScalarMappable(cmap=cmap, norm=norm)
